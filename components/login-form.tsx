@@ -25,6 +25,7 @@ export function LoginForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
+        credentials: "include", // Ensure Safari/iOS accepts Set-Cookie and sends cookies
       });
 
       if (!res.ok) {

@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     });
 
     if (!res.ok) {
+      console.log("Login failed:", res.status, res.statusText);
       const text = await res.text().catch(() => "");
       return NextResponse.json(
         {
