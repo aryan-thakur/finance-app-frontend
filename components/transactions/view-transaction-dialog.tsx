@@ -112,6 +112,7 @@ export function ViewTransactionDialog({
                     currency={(acc?.base_currency as any) || "INR"}
                     logoUrl={inst?.logo_url as any}
                     accountKind={(acc?.kind as any) || "asset"}
+                    amountMinor={Number(ln.amount_minor)}
                     direction={ln.direction}
                     note={ln.note || ""}
                     timestamp={new Date(ln.created_at || tx.timestamp).toLocaleString()}

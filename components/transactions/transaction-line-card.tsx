@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatMoney } from "@/lib/money";
 
 export function TransactionLineCard({
   logoAlt,
@@ -11,7 +12,8 @@ export function TransactionLineCard({
   logoUrl,
   currency,
   direction, // "credit" | "debit"
-  accountKind, // "asset" | "liability"
+  accountKind,
+  amountMinor,
   note,
   timestamp,
 }: {
@@ -23,15 +25,14 @@ export function TransactionLineCard({
   currency: string;
   direction: "credit" | "debit";
   accountKind: "asset" | "liability";
+  amountMinor: number;
   note: string;
   timestamp: string;
 }) {
   const colorClass = (() => {
     // Asset: credit green, debit red
     // Liability: credit red, debit green
-    const isGreen =
-      (accountKind === "asset" && direction === "credit") ||
-      (accountKind === "liability" && direction === "debit");
+    const isGreen = direction === "credit";
     return isGreen
       ? "bg-green-100 text-green-700 border-green-200"
       : "bg-red-100 text-red-700 border-red-200";
@@ -65,6 +66,9 @@ export function TransactionLineCard({
 
         <div className="flex items-center gap-3">
           <Badge className={colorClass}>{direction}</Badge>
+          <div className="text-sm font-semibold">
+            {formatMoney(Math.round(Math.abs(amountMinor)), currency as any)}
+          </div>
           <div className="text-xs text-muted-foreground">{timestamp}</div>
         </div>
       </div>

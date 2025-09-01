@@ -35,7 +35,7 @@ export function LoginForm() {
       }
 
       // On success, redirect to a protected page
-      router.push("/accounts");
+      router.push("/transactions");
     } finally {
       setSubmitting(false);
     }

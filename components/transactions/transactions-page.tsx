@@ -204,13 +204,14 @@ export function TransactionsPage({
         fromAcc?.base_currency ||
         "INR") as any;
       const amountMajor = (toAmt !== 0 ? toAmt : Math.abs(fromAmt)) / 100;
-      const overall = toAmt > 0 ? "credit" : fromAmt < 0 ? "debit" : "neutral";
       // compute pl kept from previous logic
       let pl = 0;
-      if (!(fromAcc && toAcc)) {
-        if (fromAcc) pl = fromAcc?.kind == "liability" ? 1 : -1;
-        else pl = toAcc?.kind == "liability" ? -1 : 1;
-      }
+      if (fromAcc && toAcc) pl = 0;
+      else if (fromAcc) pl = -1;
+      else if (toAcc) pl = 1;
+
+      const overall = pl === 0 ? "neutral" : pl > 0 ? "credit" : "debit";
+
       return {
         id: row.id,
         fromAccountName: fromAcc?.name || "-",
