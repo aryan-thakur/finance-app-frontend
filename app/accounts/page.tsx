@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/empty-state";
 import { NewAccountDialog } from "@/components/new-account-dialog";
 import { SetBalanceDialog } from "@/components/set-balance-dialog";
 import Link from "next/link";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[] | null>(null);
@@ -26,6 +27,8 @@ export default function AccountsPage() {
   const [showSetBalanceDialog, setShowSetBalanceDialog] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
   const [viewCurrency, setViewCurrency] = useState<"base" | "INR" | "CAD" | "USD">("base");
   const [rateUSD, setRateUSD] = useState<number>(0);
   const [rateCAD, setRateCAD] = useState<number>(0);
@@ -58,36 +61,8 @@ export default function AccountsPage() {
   };
 
   const handleDelete = (account: Account) => {
-    (async () => {
-      try {
-        const res = await fetch(`/api/accounts/${account.id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to delete account");
-        // refresh list
-        const refreshed = await fetch("/api/accounts", { cache: "no-store" });
-        if (refreshed.ok) {
-          const data = await refreshed.json();
-          const mapped: Account[] = (Array.isArray(data) ? data : []).map((row: any) => ({
-            id: row.id,
-            institution_id: row.institution_id ?? null,
-            name: row.name,
-            kind: row.kind,
-            type: row.type ?? undefined,
-            base_currency: row.base_currency,
-            number_full: row.number_full ?? undefined,
-            number_masked: row.number_masked ?? undefined,
-            credit_limit_minor: row.credit_limit_minor != null ? Number(row.credit_limit_minor) : undefined,
-            balance_minor: row.computed_balance_minor != null ? Number(row.computed_balance_minor) : Number(row.balance_minor ?? 0),
-            status: row.status ?? "active",
-            meta: row.meta ?? {},
-            created_at: row.created_at ? new Date(row.created_at) : new Date(),
-            updated_at: row.updated_at ? new Date(row.updated_at) : new Date(),
-          }));
-          setAccounts(mapped);
-        }
-      } catch (e) {
-        // ignore
-      }
-    })();
+    setDeletingAccount(account);
+    setDeleteOpen(true);
   };
 
   const handleCreateAccount = () => {
@@ -248,6 +223,60 @@ export default function AccountsPage() {
           }}
         />
       )}
+      {/* Delete confirm */}
+      {deletingAccount && (
+        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete Account</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete account "{deletingAccount.name}"?
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (!deletingAccount) return;
+                  try {
+                    const res = await fetch(`/api/accounts/${deletingAccount.id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                      const refreshed = await fetch('/api/accounts', { cache: 'no-store' });
+                      if (refreshed.ok) {
+                        const data = await refreshed.json();
+                        const mapped: Account[] = (Array.isArray(data) ? data : []).map((row: any) => ({
+                          id: row.id,
+                          institution_id: row.institution_id ?? null,
+                          name: row.name,
+                          kind: row.kind,
+                          type: row.type ?? undefined,
+                          base_currency: row.base_currency,
+                          number_full: row.number_full ?? undefined,
+                          number_masked: row.number_masked ?? undefined,
+                          credit_limit_minor: row.credit_limit_minor != null ? Number(row.credit_limit_minor) : undefined,
+                          balance_minor: row.computed_balance_minor != null ? Number(row.computed_balance_minor) : Number(row.balance_minor ?? 0),
+                          status: row.status ?? 'active',
+                          meta: row.meta ?? {},
+                          created_at: row.created_at ? new Date(row.created_at) : new Date(),
+                          updated_at: row.updated_at ? new Date(row.updated_at) : new Date(),
+                        }));
+                        setAccounts(mapped);
+                      }
+                    }
+                  } catch {}
+                  setDeleteOpen(false);
+                  setDeletingAccount(null);
+                }}
+              >
+                Yes, delete
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
       </>
     );
   }
@@ -399,6 +428,95 @@ export default function AccountsPage() {
           }
         }}
       />
+      {editingAccount && (
+        <NewAccountDialog
+          mode="edit"
+          initial={editingAccount}
+          open={editOpen}
+          onOpenChange={(o) => {
+            setEditOpen(o);
+            if (!o) setEditingAccount(null);
+          }}
+          onSaved={async () => {
+            const refreshed = await fetch("/api/accounts", { cache: "no-store" });
+            if (refreshed.ok) {
+              const data = await refreshed.json();
+              const mapped: Account[] = (Array.isArray(data) ? data : []).map((row: any) => ({
+                id: row.id,
+                institution_id: row.institution_id ?? null,
+                name: row.name,
+                kind: row.kind,
+                type: row.type ?? undefined,
+                base_currency: row.base_currency,
+                number_full: row.number_full ?? undefined,
+                number_masked: row.number_masked ?? undefined,
+                credit_limit_minor: row.credit_limit_minor != null ? Number(row.credit_limit_minor) : undefined,
+                balance_minor: row.computed_balance_minor != null ? Number(row.computed_balance_minor) : Number(row.balance_minor ?? 0),
+                status: row.status ?? "active",
+                meta: row.meta ?? {},
+                created_at: row.created_at ? new Date(row.created_at) : new Date(),
+                updated_at: row.updated_at ? new Date(row.updated_at) : new Date(),
+              }));
+              setAccounts(mapped);
+            }
+            setEditOpen(false);
+            setEditingAccount(null);
+          }}
+        />
+      )}
+      {deletingAccount && (
+        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete Account</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete account "{deletingAccount.name}"?
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (!deletingAccount) return;
+                  try {
+                    const res = await fetch(`/api/accounts/${deletingAccount.id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                      const refreshed = await fetch('/api/accounts', { cache: 'no-store' });
+                      if (refreshed.ok) {
+                        const data = await refreshed.json();
+                        const mapped: Account[] = (Array.isArray(data) ? data : []).map((row: any) => ({
+                          id: row.id,
+                          institution_id: row.institution_id ?? null,
+                          name: row.name,
+                          kind: row.kind,
+                          type: row.type ?? undefined,
+                          base_currency: row.base_currency,
+                          number_full: row.number_full ?? undefined,
+                          number_masked: row.number_masked ?? undefined,
+                          credit_limit_minor: row.credit_limit_minor != null ? Number(row.credit_limit_minor) : undefined,
+                          balance_minor: row.computed_balance_minor != null ? Number(row.computed_balance_minor) : Number(row.balance_minor ?? 0),
+                          status: row.status ?? 'active',
+                          meta: row.meta ?? {},
+                          created_at: row.created_at ? new Date(row.created_at) : new Date(),
+                          updated_at: row.updated_at ? new Date(row.updated_at) : new Date(),
+                        }));
+                        setAccounts(mapped);
+                      }
+                    }
+                  } catch {}
+                  setDeleteOpen(false);
+                  setDeletingAccount(null);
+                }}
+              >
+                Yes, delete
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

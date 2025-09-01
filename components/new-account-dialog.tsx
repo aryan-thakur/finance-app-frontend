@@ -75,7 +75,7 @@ export function NewAccountDialog({
   // (1) FIX: Add missing fields to initial state
   const [formData, setFormData] = useState<FormData>({
     name: "",
-    institution_id: "",
+    institution_id: "0",
     kind: "",
     type: "",
     base_currency: "",
@@ -117,10 +117,12 @@ export function NewAccountDialog({
       newErrors.base_currency = "Currency is required";
     }
 
-    if (!formData.number_full.trim()) {
-      newErrors.number_full = "Account number is required";
-    } else if (formData.number_full.length < 4) {
-      newErrors.number_full = "Account number must be at least 4 digits";
+    if (mode !== "edit") {
+      if (!formData.number_full.trim()) {
+        newErrors.number_full = "Account number is required";
+      } else if (formData.number_full.length < 4) {
+        newErrors.number_full = "Account number must be at least 4 digits";
+      }
     }
 
     // Starting balance required
@@ -148,18 +150,24 @@ export function NewAccountDialog({
       : undefined;
 
     try {
-      const payload = {
+      const payload: any = {
         name: formData.name.trim() || undefined,
-        institution_id: formData.institution_id.trim() || undefined,
+        institution_id:
+          formData.institution_id && formData.institution_id !== "0"
+            ? formData.institution_id
+            : undefined,
         kind: formData.kind as AccountKind,
         type: formData.type || undefined,
         base_currency: formData.base_currency as Currency,
-        number_full: formData.number_full.trim(),
         credit_limit_minor,
         balance_minor,
         status: formData.status || undefined,
         meta: formData.meta ? JSON.parse(formData.meta) : undefined,
       };
+      // Only include number_full on create; never change on edit
+      if (mode === "create") {
+        payload.number_full = formData.number_full.trim();
+      }
 
       if (mode === "edit" && initial?.id) {
         const res = await fetch(`/api/accounts/${initial.id}`, {
@@ -202,7 +210,7 @@ export function NewAccountDialog({
       // Reset form and close dialog
       setFormData({
         name: "",
-        institution_id: "",
+        institution_id: "0",
         kind: "",
         type: "",
         base_currency: "",
@@ -229,8 +237,9 @@ export function NewAccountDialog({
   };
 
   useEffect(() => {
-    // Load institutions when dialog opens
-    if (!open) return;
+    // Load institutions when dialog opens (support controlled open)
+    const isOpen = controlledOpen ?? open;
+    if (!isOpen) return;
     (async () => {
       try {
         setInstitutionsLoading(true);
@@ -245,7 +254,7 @@ export function NewAccountDialog({
         setInstitutionsLoading(false);
       }
     })();
-  }, [open]);
+  }, [controlledOpen, open]);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -277,7 +286,8 @@ export function NewAccountDialog({
     };
     setFormData({
       name: initial.name || "",
-      institution_id: (initial.institution_id as string) || "",
+      institution_id:
+        (initial.institution_id as string) ?? "0",
       kind: (initial.kind as any) || "",
       type: (initial.type as any) || "",
       base_currency: (initial.base_currency as any) || "",
@@ -295,6 +305,20 @@ export function NewAccountDialog({
       ),
     });
     setNumberMasked(initial.number_masked || "");
+    if (initial.id && !initial.number_full) {
+      (async () => {
+        try {
+          const res = await fetch(`/api/accounts/${initial.id}/number_full`, { cache: 'no-store' });
+          if (!res.ok) return;
+          const data = await res.json();
+          const full = typeof data === 'string' ? data : data?.number_full;
+          if (typeof full === 'string') {
+            setFormData((prev) => ({ ...prev, number_full: full }));
+            setNumberMasked(maskAccountNumber(full));
+          }
+        } catch {}
+      })();
+    }
   }, [mergedOpen, mode, initial]);
 
   return (
@@ -344,7 +368,7 @@ export function NewAccountDialog({
                 />
               </SelectTrigger>
               <SelectContent className="max-h-64 overflow-y-auto">
-                <SelectItem value="None">None</SelectItem>
+                <SelectItem value="0">None</SelectItem>
                 {institutions.map((inst) => (
                   <SelectItem key={inst.id} value={inst.id}>
                     {inst.name}
@@ -462,6 +486,7 @@ export function NewAccountDialog({
               onBlur={handleNumberBlur}
               placeholder="Enter full account number"
               className={errors.number_full ? "border-red-500" : ""}
+              disabled={mode === "edit"}
             />
             {numberMasked && (
               <p className="text-sm text-muted-foreground">
