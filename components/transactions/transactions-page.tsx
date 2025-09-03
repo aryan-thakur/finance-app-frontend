@@ -377,421 +377,423 @@ export function TransactionsPage({
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg md:text-xl">All Transactions</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Header row with pagination and filter */}
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="text-sm text-muted-foreground">
-            {totalCount != null
-              ? `Showing ${showingFrom}-${showingTo} of ${totalCount}`
-              : `Loading count…`}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!canPrev}
-              onClick={onPrev}
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span className="sr-only">Previous page</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!canNext}
-              onClick={onNext}
-            >
-              <ChevronRight className="h-4 w-4" />
-              <span className="sr-only">Next page</span>
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setIsFilterOpen(true)}
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="rounded-md border">
-          <div className="w-full overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[160px]">From Account</TableHead>
-                  <TableHead className="min-w-[160px]">
-                    From Institution
-                  </TableHead>
-                  <TableHead className="min-w-[160px]">To Account</TableHead>
-                  <TableHead className="min-w-[160px]">
-                    To Institution
-                  </TableHead>
-                  <TableHead className="min-w-[120px]">Amount</TableHead>
-                  <TableHead className="min-w-[120px]">Kind</TableHead>
-                  <TableHead className="min-w-[320px]">Description</TableHead>
-                  <TableHead className="min-w-[180px]">Timestamp</TableHead>
-                  <TableHead className="min-w-[90px] text-center">
-                    Reversal
-                  </TableHead>
-                  <TableHead className="w-[96px] text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loadError && (
-                  <TableRow>
-                    <TableCell colSpan={10} className="text-red-600">
-                      {loadError}
-                    </TableCell>
-                  </TableRow>
-                )}
-                {(loadingRows ? [] : rows).map((tx) => (
-                  <TableRow key={tx.id}>
-                    <TableCell className="whitespace-nowrap">
-                      {tx.fromAccountName}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-muted-foreground">
-                      {tx.fromInstitution}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {tx.toAccountName}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-muted-foreground">
-                      {tx.toInstitution}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap font-medium">
-                      <span
-                        className={
-                          tx.reversed
-                            ? undefined
-                            : tx.pl > 0
-                            ? "text-green-700"
-                            : tx.pl < 0
-                            ? "text-red-700"
-                            : undefined
-                        }
-                      >
-                        {formatMoney(Math.round(tx.amount * 100), tx.currency)}{" "}
-                      </span>
-                      <Badge variant="secondary" className="align-middle">
-                        {tx.currency}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <Badge variant="outline">{tx.kind}</Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[360px] truncate">
-                      {tx.description}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-muted-foreground">
-                      {new Date(tx.timestamp).toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center">
-                        <Checkbox
-                          checked={tx.reversed}
-                          aria-label="Reversal"
-                          disabled
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Edit transaction"
-                          onClick={() => {
-                            setSelectedTx(tx);
-                            setIsEditOpen(true);
-                          }}
-                          className={
-                            tx.reversed ? "opacity-50 cursor-not-allowed" : ""
-                          }
-                          title={
-                            tx.reversed
-                              ? "Cannot edit a reversed transaction"
-                              : undefined
-                          }
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Delete transaction"
-                          disabled={tx.reversed}
-                          className={
-                            tx.reversed ? "opacity-50 cursor-not-allowed" : ""
-                          }
-                          title={
-                            tx.reversed
-                              ? "Cannot delete a reversed transaction"
-                              : undefined
-                          }
-                          onClick={() => {
-                            if (tx.reversed) return;
-                            setSelectedTx(tx);
-                            setIsDeleteOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="View more"
-                          onClick={() => {
-                            setSelectedTx(tx);
-                            setIsViewOpen(true);
-                          }}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Create Transaction Form (UI-only) */}
-        <Card className="border-0 shadow-none">
-          <CardHeader className="px-0 pt-0">
-            <CardTitle className="text-base md:text-lg">
-              Create Transaction
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-0">
-            <form
-              className="grid gap-4 md:grid-cols-2"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                setSubmitError("");
-                if (hasCurrencyConflict) return;
-                const fromId =
-                  fromAccountId && fromAccountId !== "0" ? fromAccountId : "";
-                const toId =
-                  toAccountId && toAccountId !== "0" ? toAccountId : "";
-                if (!fromId && !toId) {
-                  setSubmitError("Select at least one account (From or To)");
-                  return;
-                }
-                const amt = parseFloat(amountInput);
-                if (!Number.isFinite(amt) || amt === 0) {
-                  setSubmitError("Enter a non-zero amount");
-                  return;
-                }
-                if (!kindInput) {
-                  setSubmitError("Select a kind");
-                  return;
-                }
-                let meta: any | undefined = undefined;
-                if (metaInput && metaInput.trim()) {
-                  try {
-                    meta = JSON.parse(metaInput);
-                  } catch {
-                    setSubmitError("Meta must be valid JSON");
-                    return;
-                  }
-                }
-                const amount_minor = Math.round(amt * 100);
-                const payload: any = {
-                  kind: kindInput,
-                  description: descriptionInput || undefined,
-                  meta,
-                  account_from: fromId || undefined,
-                  account_to: toId || undefined,
-                  amount_minor,
-                };
+    <>
+      {/* Create Transaction Form (UI-only) */}
+      <Card className="pb-4 mb-2">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg md:text-xl">
+            Create Transaction
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 space-x-4">
+          <form
+            className="grid gap-4 md:grid-cols-2"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setSubmitError("");
+              if (hasCurrencyConflict) return;
+              const fromId =
+                fromAccountId && fromAccountId !== "0" ? fromAccountId : "";
+              const toId =
+                toAccountId && toAccountId !== "0" ? toAccountId : "";
+              if (!fromId && !toId) {
+                setSubmitError("Select at least one account (From or To)");
+                return;
+              }
+              const amt = parseFloat(amountInput);
+              if (!Number.isFinite(amt) || amt === 0) {
+                setSubmitError("Enter a non-zero amount");
+                return;
+              }
+              if (!kindInput) {
+                setSubmitError("Select a kind");
+                return;
+              }
+              let meta: any | undefined = undefined;
+              if (metaInput && metaInput.trim()) {
                 try {
-                  setSubmitting(true);
-                  const res = await fetch("/api/transactions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                  });
-                  if (!res.ok) {
-                    const data = await res.json().catch(() => ({}));
-                    throw new Error(
-                      data?.message ||
-                        data?.detail ||
-                        "Failed to create transaction"
-                    );
-                  }
-                  // Reset fields on success
-                  setAmountInput("");
-                  setDescriptionInput("");
-                  setMetaInput("{}");
-                  // Force refresh of table
-                  setRefreshKey((k) => k + 1);
-                } catch (err) {
-                  setSubmitError((err as Error).message);
-                } finally {
-                  setSubmitting(false);
+                  meta = JSON.parse(metaInput);
+                } catch {
+                  setSubmitError("Meta must be valid JSON");
+                  return;
                 }
-              }}
-            >
-              {/* From Account */}
-              <div className="grid gap-2">
-                <Label htmlFor="fromAccount">From Account</Label>
-                <Select value={fromAccountId} onValueChange={setFromAccountId}>
-                  <SelectTrigger id="fromAccount" aria-label="From Account">
-                    <SelectValue placeholder="Select account" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72 overflow-y-auto">
-                    <SelectItem value="0">
-                      NA • <span className="text-muted-foreground">NA</span>
+              }
+              const amount_minor = Math.round(amt * 100);
+              const payload: any = {
+                kind: kindInput,
+                description: descriptionInput || undefined,
+                meta,
+                account_from: fromId || undefined,
+                account_to: toId || undefined,
+                amount_minor,
+              };
+              try {
+                setSubmitting(true);
+                const res = await fetch("/api/transactions", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload),
+                });
+                if (!res.ok) {
+                  const data = await res.json().catch(() => ({}));
+                  throw new Error(
+                    data?.message ||
+                      data?.detail ||
+                      "Failed to create transaction"
+                  );
+                }
+                // Reset fields on success
+                setAmountInput("");
+                setDescriptionInput("");
+                setMetaInput("{}");
+                // Force refresh of table
+                setRefreshKey((k) => k + 1);
+              } catch (err) {
+                setSubmitError((err as Error).message);
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+          >
+            {/* From Account */}
+            <div className="grid gap-2">
+              <Label htmlFor="fromAccount">From Account</Label>
+              <Select value={fromAccountId} onValueChange={setFromAccountId}>
+                <SelectTrigger id="fromAccount" aria-label="From Account">
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72 overflow-y-auto">
+                  <SelectItem value="0">
+                    NA • <span className="text-muted-foreground">NA</span>
+                  </SelectItem>
+                  {accounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.name}
+                      {acc.institution_id && (
+                        <>
+                          {" "}
+                          •{" "}
+                          <span className="text-muted-foreground">
+                            {institutionNameById(acc.institution_id)}
+                          </span>
+                        </>
+                      )}
                     </SelectItem>
-                    {accounts.map((acc) => (
-                      <SelectItem key={acc.id} value={acc.id}>
-                        {acc.name}
-                        {acc.institution_id && (
-                          <>
-                            {" "}
-                            •{" "}
-                            <span className="text-muted-foreground">
-                              {institutionNameById(acc.institution_id)}
-                            </span>
-                          </>
-                        )}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              {/* To Account */}
-              <div className="grid gap-2">
-                <Label htmlFor="toAccount">To Account</Label>
-                <Select value={toAccountId} onValueChange={setToAccountId}>
-                  <SelectTrigger id="toAccount" aria-label="To Account">
-                    <SelectValue placeholder="Select account" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72 overflow-y-auto">
-                    <SelectItem value="0">
-                      NA • <span className="text-muted-foreground">NA</span>
+            {/* To Account */}
+            <div className="grid gap-2">
+              <Label htmlFor="toAccount">To Account</Label>
+              <Select value={toAccountId} onValueChange={setToAccountId}>
+                <SelectTrigger id="toAccount" aria-label="To Account">
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72 overflow-y-auto">
+                  <SelectItem value="0">
+                    NA • <span className="text-muted-foreground">NA</span>
+                  </SelectItem>
+                  {accounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.name}
+                      {acc.institution_id && (
+                        <>
+                          {" "}
+                          •{" "}
+                          <span className="text-muted-foreground">
+                            {institutionNameById(acc.institution_id)}
+                          </span>
+                        </>
+                      )}
                     </SelectItem>
-                    {accounts.map((acc) => (
-                      <SelectItem key={acc.id} value={acc.id}>
-                        {acc.name}
-                        {acc.institution_id && (
-                          <>
-                            {" "}
-                            •{" "}
-                            <span className="text-muted-foreground">
-                              {institutionNameById(acc.institution_id)}
-                            </span>
-                          </>
-                        )}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              {/* Currency (auto-resolved from selected accounts) */}
-              <div className="grid gap-2">
-                <Label htmlFor="currency">Currency</Label>
-                <div
-                  id="currency"
-                  className={
-                    hasCurrencyConflict
-                      ? "text-red-600 font-medium"
-                      : "text-muted-foreground"
-                  }
-                >
-                  {hasCurrencyConflict
-                    ? "Currency mismatch between selected accounts"
-                    : resolvedCurrency || "—"}
-                </div>
+            {/* Currency (auto-resolved from selected accounts) */}
+            <div className="grid gap-2">
+              <Label htmlFor="currency">Currency</Label>
+              <div
+                id="currency"
+                className={
+                  hasCurrencyConflict
+                    ? "text-red-600 font-medium"
+                    : "text-muted-foreground"
+                }
+              >
+                {hasCurrencyConflict
+                  ? "Currency mismatch between selected accounts"
+                  : resolvedCurrency || "—"}
               </div>
+            </div>
 
-              {/* Amount */}
-              <div className="grid gap-2">
-                <Label htmlFor="amount">Amount</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  className="w-36 appearance-none [appearance:textfield] [-moz-appearance:textfield] [::-webkit-outer-spin-button]:appearance-none [::-webkit-inner-spin-button]:appearance-none"
-                  value={amountInput}
-                  onChange={(e) => setAmountInput(e.target.value)}
-                />
-              </div>
+            {/* Amount */}
+            <div className="grid gap-2">
+              <Label htmlFor="amount">Amount</Label>
+              <Input
+                id="amount"
+                type="number"
+                inputMode="decimal"
+                placeholder="0.00"
+                className="w-36 appearance-none [appearance:textfield] [-moz-appearance:textfield] [::-webkit-outer-spin-button]:appearance-none [::-webkit-inner-spin-button]:appearance-none"
+                value={amountInput}
+                onChange={(e) => setAmountInput(e.target.value)}
+              />
+            </div>
 
-              {/* Kind */}
-              <div className="grid gap-2">
-                <Label htmlFor="kind">Kind</Label>
-                <Select value={kindInput} onValueChange={setKindInput}>
-                  <SelectTrigger id="kind" aria-label="Kind">
-                    <SelectValue placeholder="Select kind" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="transfer">transfer</SelectItem>
-                    <SelectItem value="income">income</SelectItem>
-                    <SelectItem value="expense">expense</SelectItem>
-                    <SelectItem value="adjustment">adjustment</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Kind */}
+            <div className="grid gap-2">
+              <Label htmlFor="kind">Kind</Label>
+              <Select value={kindInput} onValueChange={setKindInput}>
+                <SelectTrigger id="kind" aria-label="Kind">
+                  <SelectValue placeholder="Select kind" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="transfer">transfer</SelectItem>
+                  <SelectItem value="income">income</SelectItem>
+                  <SelectItem value="expense">expense</SelectItem>
+                  <SelectItem value="adjustment">adjustment</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-              {/* Description */}
-              <div className="grid gap-2 md:col-span-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Add a short description"
-                  className="min-h-[60px]"
-                  value={descriptionInput}
-                  onChange={(e) => setDescriptionInput(e.target.value)}
-                />
-              </div>
+            {/* Description */}
+            <div className="grid gap-2 md:col-span-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Add a short description"
+                className="min-h-[60px]"
+                value={descriptionInput}
+                onChange={(e) => setDescriptionInput(e.target.value)}
+              />
+            </div>
 
-              {/* Meta JSON */}
-              <div className="grid gap-2 md:col-span-2">
-                <Label htmlFor="meta">Meta (JSON)</Label>
-                <Textarea
-                  id="meta"
-                  className="font-mono min-h-[60px]"
-                  value={metaInput}
-                  onChange={(e) => setMetaInput(e.target.value)}
-                />
-              </div>
+            {/* Meta JSON */}
+            <div className="hidden lg:block grid gap-2 md:col-span-2">
+              <Label htmlFor="meta">Meta (JSON)</Label>
+              <Textarea
+                id="meta"
+                className="font-mono min-h-[60px]"
+                value={metaInput}
+                onChange={(e) => setMetaInput(e.target.value)}
+              />
+            </div>
 
-              {/* Submit */}
-              {/* Disabled when currency conflict exists */}
-              <div className="md:col-span-2">
-                {submitError && (
-                  <div className="text-red-600 text-sm mb-2">{submitError}</div>
-                )}
-                <Button
-                  type="submit"
-                  disabled={hasCurrencyConflict || submitting}
-                  title={
-                    hasCurrencyConflict
-                      ? "Resolve currency mismatch"
-                      : undefined
-                  }
-                >
-                  {submitting ? "Creating…" : "Create Transaction"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </CardContent>
+            {/* Submit */}
+            {/* Disabled when currency conflict exists */}
+            <div className="md:col-span-2">
+              {submitError && (
+                <div className="text-red-600 text-sm mb-2">{submitError}</div>
+              )}
+              <Button
+                type="submit"
+                disabled={hasCurrencyConflict || submitting}
+                title={
+                  hasCurrencyConflict ? "Resolve currency mismatch" : undefined
+                }
+              >
+                {submitting ? "Creating…" : "Create Transaction"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg md:text-xl">All Transactions</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Header row with pagination and filter */}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm text-muted-foreground">
+              {totalCount != null
+                ? `Showing ${showingFrom}-${showingTo} of ${totalCount}`
+                : `Loading count…`}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!canPrev}
+                onClick={onPrev}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">Previous page</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!canNext}
+                onClick={onNext}
+              >
+                <ChevronRight className="h-4 w-4" />
+                <span className="sr-only">Next page</span>
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setIsFilterOpen(true)}
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filter
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Table */}
+          <div className="rounded-md border">
+            <div className="w-full overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-center min-w-[80px]">
+                      Date
+                    </TableHead>
+                    <TableHead className="min-w-[160px]">
+                      From Account
+                    </TableHead>
+                    <TableHead className="min-w-[140px]">
+                      From Institution
+                    </TableHead>
+                    <TableHead className="min-w-[160px]">To Account</TableHead>
+                    <TableHead className="min-w-[140px]">
+                      To Institution
+                    </TableHead>
+                    <TableHead className="min-w-[120px]">Amount</TableHead>
+                    <TableHead className="text-center min-w-[80px]">
+                      Kind
+                    </TableHead>
+                    <TableHead className="min-w-[240px]">Description</TableHead>
+
+                    <TableHead className="w-[160px] text-center">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loadError && (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-red-600">
+                        {loadError}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {(loadingRows ? [] : rows).map((tx) => (
+                    <TableRow key={tx.id}>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {new Date(tx.timestamp).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "2-digit",
+                          timeZone: "Asia/Kolkata", // GMT+5:30
+                        })}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {tx.fromAccountName}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {tx.fromInstitution}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {tx.toAccountName}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {tx.toInstitution}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap font-medium">
+                        <span
+                          className={
+                            tx.reversed
+                              ? undefined
+                              : tx.pl > 0
+                              ? "text-green-700"
+                              : tx.pl < 0
+                              ? "text-red-700"
+                              : undefined
+                          }
+                        >
+                          {formatMoney(
+                            Math.round(tx.amount * 100),
+                            tx.currency
+                          )}{" "}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center whitespace-nowrap">
+                        <Badge variant="outline">{tx.kind}</Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[360px] truncate">
+                        {tx.description}
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Edit transaction"
+                            onClick={() => {
+                              setSelectedTx(tx);
+                              setIsEditOpen(true);
+                            }}
+                            className={
+                              tx.reversed ? "opacity-50 cursor-not-allowed" : ""
+                            }
+                            title={
+                              tx.reversed
+                                ? "Cannot edit a reversed transaction"
+                                : undefined
+                            }
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Delete transaction"
+                            disabled={tx.reversed}
+                            className={
+                              tx.reversed ? "opacity-50 cursor-not-allowed" : ""
+                            }
+                            title={
+                              tx.reversed
+                                ? "Cannot delete a reversed transaction"
+                                : undefined
+                            }
+                            onClick={() => {
+                              if (tx.reversed) return;
+                              setSelectedTx(tx);
+                              setIsDeleteOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="View more"
+                            onClick={() => {
+                              setSelectedTx(tx);
+                              setIsViewOpen(true);
+                            }}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filter Modal (UI-only) */}
       <Dialog open={isFilterOpen} onOpenChange={setIsFilterOpen}>
@@ -1087,6 +1089,6 @@ export function TransactionsPage({
           </Dialog>
         </>
       )}
-    </Card>
+    </>
   );
 }

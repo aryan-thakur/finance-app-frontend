@@ -80,10 +80,10 @@ export function AccountCard({
               <img
                 src={institutionLogo}
                 alt={institutionName || account.name}
-                className="h-20 w-20 rounded object-contain bg-transparent"
+                className="h-10 w-10 lg:h-20 lg:w-20 rounded object-contain bg-transparent"
               />
             ) : (
-              <div className="h-20 w-20 rounded bg-muted flex items-center justify-center text-sm font-semibold text-foreground/70">
+              <div className="h-10 w-10 lg:h-20 lg:w-20 rounded bg-muted flex items-center justify-center text-sm font-semibold text-foreground/70">
                 {getInitials(account.name)}
               </div>
             )}
@@ -112,7 +112,8 @@ export function AccountCard({
           {/* Balance and Actions */}
           <div className="flex flex-col items-end gap-2">
             {(() => {
-              const displayMinor = overrideBalanceMinor ?? account.balance_minor;
+              const displayMinor =
+                overrideBalanceMinor ?? account.balance_minor;
               const colorClass =
                 account.kind === "liability"
                   ? displayMinor > 0
@@ -122,7 +123,9 @@ export function AccountCard({
                   ? "text-red-600"
                   : "text-green-600";
               return (
-                <div className={`text-2xl font-bold mb-2 ${colorClass}`}>
+                <div
+                  className={`text-lg md:text-xl lg:text-2xl font-bold mb-2 ${colorClass}`}
+                >
                   {formatMoney(
                     displayMinor,
                     (overrideCurrency as any) ?? account.base_currency
