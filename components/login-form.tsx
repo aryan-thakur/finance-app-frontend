@@ -1,66 +1,57 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Eye, EyeOff } from "lucide-react";
+import { login, signup } from "@/app/login/actions";
 
 export function LoginForm() {
-  const [username, setUsername] = React.useState("");
+  const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
-  const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string>("");
-  const router = useRouter();
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setSubmitting(true);
+  function isValidEmail(value: string) {
+    // Basic RFC5322-like check; HTML5 type=email also enforces
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  }
+
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     setError("");
-    try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-        credentials: "include", // Ensure Safari/iOS accepts Set-Cookie and sends cookies
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.message || "Login failed");
-        return;
-      }
-
-      // On success, redirect to a protected page
-      router.push("/transactions");
-    } finally {
-      setSubmitting(false);
+    if (!isValidEmail(email)) {
+      e.preventDefault();
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (!password) {
+      e.preventDefault();
+      setError("Password is required.");
     }
   }
 
   return (
     <Card className="border-border bg-card">
       <CardContent className="pt-6">
-        <form onSubmit={onSubmit} className="grid gap-5">
+        <form action={login} onSubmit={onSubmit} className="grid gap-5">
           {error && (
             <div className="text-sm text-red-600" role="alert">
               {error}
             </div>
           )}
           <div className="grid gap-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
-              id="username"
-              name="username"
-              type="text"
-              inputMode="text"
-              autoComplete="username"
-              placeholder="yourname"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="email"
+              name="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
@@ -99,15 +90,26 @@ export function LoginForm() {
             </div>
           </div>
 
-          <Button
-            type="submit"
-            size="lg"
-            className="w-full"
-            disabled={submitting}
-            aria-label="Log in"
-          >
-            {submitting ? "Logging in..." : "Log in"}
-          </Button>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              aria-label="Log in"
+            >
+              Log in
+            </Button>
+            <Button
+              type="submit"
+              size="lg"
+              variant="outline"
+              className="w-full"
+              formAction={signup}
+              aria-label="Sign up"
+            >
+              Sign up
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>
