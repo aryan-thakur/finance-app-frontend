@@ -62,7 +62,6 @@ export function TransactionsPage({
   const [fromAccountId, setFromAccountId] = useState<string>("");
   const [toAccountId, setToAccountId] = useState<string>("");
   const [amountInput, setAmountInput] = useState<string>("");
-  const [kindInput, setKindInput] = useState<string>("");
   const [descriptionInput, setDescriptionInput] = useState<string>("");
   const [metaInput, setMetaInput] = useState<string>("{}");
   const [submitting, setSubmitting] = useState(false);
@@ -110,6 +109,14 @@ export function TransactionsPage({
     () => accounts.find((a) => a.id === toAccountId) || null,
     [accounts, toAccountId]
   );
+  const resolvedKind = useMemo(() => {
+    const hasFrom = fromAccountId && fromAccountId !== "0";
+    const hasTo = toAccountId && toAccountId !== "0";
+    if (hasFrom && hasTo) return "transfer";
+    if (hasFrom) return "expense";
+    if (hasTo) return "income";
+    return "";
+  }, [fromAccountId, toAccountId]);
   const hasCurrencyConflict = !!(
     fromAccount &&
     toAccount &&
@@ -405,10 +412,6 @@ export function TransactionsPage({
                 setSubmitError("Enter a non-zero amount");
                 return;
               }
-              if (!kindInput) {
-                setSubmitError("Select a kind");
-                return;
-              }
               let meta: any | undefined = undefined;
               if (metaInput && metaInput.trim()) {
                 try {
@@ -419,8 +422,12 @@ export function TransactionsPage({
                 }
               }
               const amount_minor = Math.round(amt * 100);
+              if (!resolvedKind) {
+                setSubmitError("Unable to determine transaction kind");
+                return;
+              }
               const payload: any = {
-                kind: kindInput,
+                kind: resolvedKind,
                 description: descriptionInput || undefined,
                 meta,
                 account_from: fromId || undefined,
@@ -544,20 +551,19 @@ export function TransactionsPage({
               />
             </div>
 
-            {/* Kind */}
+            {/* Kind (auto-resolved from account selection) */}
             <div className="grid gap-2">
               <Label htmlFor="kind">Kind</Label>
-              <Select value={kindInput} onValueChange={setKindInput}>
-                <SelectTrigger id="kind" aria-label="Kind">
-                  <SelectValue placeholder="Select kind" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="transfer">transfer</SelectItem>
-                  <SelectItem value="income">income</SelectItem>
-                  <SelectItem value="expense">expense</SelectItem>
-                  <SelectItem value="adjustment">adjustment</SelectItem>
-                </SelectContent>
-              </Select>
+              <div
+                id="kind"
+                className={
+                  resolvedKind
+                    ? "text-muted-foreground"
+                    : "text-muted-foreground italic"
+                }
+              >
+                {resolvedKind || "—"}
+              </div>
             </div>
 
             {/* Description */}

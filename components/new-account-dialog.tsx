@@ -286,8 +286,7 @@ export function NewAccountDialog({
     };
     setFormData({
       name: initial.name || "",
-      institution_id:
-        (initial.institution_id as string) ?? "0",
+      institution_id: (initial.institution_id as string) ?? "0",
       kind: (initial.kind as any) || "",
       type: (initial.type as any) || "",
       base_currency: (initial.base_currency as any) || "",
@@ -308,11 +307,13 @@ export function NewAccountDialog({
     if (initial.id && !initial.number_full) {
       (async () => {
         try {
-          const res = await fetch(`/api/accounts/${initial.id}/number_full`, { cache: 'no-store' });
+          const res = await fetch(`/api/accounts/${initial.id}/number_full`, {
+            cache: "no-store",
+          });
           if (!res.ok) return;
           const data = await res.json();
-          const full = typeof data === 'string' ? data : data?.number_full;
-          if (typeof full === 'string') {
+          const full = typeof data === "string" ? data : data?.number_full;
+          if (typeof full === "string") {
             setFormData((prev) => ({ ...prev, number_full: full }));
             setNumberMasked(maskAccountNumber(full));
           }
@@ -450,6 +451,7 @@ export function NewAccountDialog({
                 <SelectItem value="INR">INR (₹)</SelectItem>
                 <SelectItem value="USD">USD ($)</SelectItem>
                 <SelectItem value="CAD">CAD (C$)</SelectItem>
+                <SelectItem value="GBP">GBP (£)</SelectItem>
               </SelectContent>
             </Select>
             {errors.base_currency && (

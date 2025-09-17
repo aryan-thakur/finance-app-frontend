@@ -4,12 +4,14 @@ const CURRENCY_SYMBOLS: Record<Currency, string> = {
   INR: "₹",
   USD: "$",
   CAD: "C$",
+  GBP: "£",
 };
 
 const CURRENCY_DECIMALS: Record<Currency, number> = {
   INR: 100, // paise
   USD: 100, // cents
   CAD: 100, // cents
+  GBP: 100, // pence
 };
 
 export function formatMoney(amountMinor: number, currency: Currency): string {

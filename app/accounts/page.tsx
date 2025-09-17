@@ -29,9 +29,12 @@ export default function AccountsPage() {
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
-  const [viewCurrency, setViewCurrency] = useState<"base" | "INR" | "CAD" | "USD">("base");
+  const [viewCurrency, setViewCurrency] = useState<
+    "base" | "INR" | "CAD" | "USD" | "GBP"
+  >("base");
   const [rateUSD, setRateUSD] = useState<number>(0);
   const [rateCAD, setRateCAD] = useState<number>(0);
+  const [rateGBP, setRateGBP] = useState<number>(0);
 
   const filteredAccounts =
     accounts?.filter((account) => {
@@ -118,6 +121,7 @@ export default function AccountsPage() {
         if (!cancelled) {
           setRateUSD(typeof r.USD === "number" ? r.USD : 0);
           setRateCAD(typeof r.CAD === "number" ? r.CAD : 0);
+          setRateGBP(typeof r.GBP === "number" ? r.GBP : 0);
         }
       } catch {}
     })();
@@ -128,8 +132,8 @@ export default function AccountsPage() {
 
   const convertToTarget = (
     amountMinor: number,
-    baseCurrency: "INR" | "USD" | "CAD",
-    target: "INR" | "USD" | "CAD"
+    baseCurrency: "INR" | "USD" | "CAD" | "GBP",
+    target: "INR" | "USD" | "CAD" | "GBP"
   ) => {
     if (target === baseCurrency) return amountMinor;
     // convert to INR major first
@@ -140,6 +144,8 @@ export default function AccountsPage() {
       inrMajor = (amountMinor / 100) / rateUSD;
     } else if (baseCurrency === "CAD" && rateCAD > 0) {
       inrMajor = (amountMinor / 100) / rateCAD;
+    } else if (baseCurrency === "GBP" && rateGBP > 0) {
+      inrMajor = (amountMinor / 100) / rateGBP;
     } else {
       // no rates yet
       return amountMinor;
@@ -148,6 +154,7 @@ export default function AccountsPage() {
     let targetMajor = inrMajor;
     if (target === "USD" && rateUSD > 0) targetMajor = inrMajor * rateUSD;
     if (target === "CAD" && rateCAD > 0) targetMajor = inrMajor * rateCAD;
+    if (target === "GBP" && rateGBP > 0) targetMajor = inrMajor * rateGBP;
     // target === INR keeps inrMajor
     return Math.round(targetMajor * 100);
   };
@@ -317,7 +324,7 @@ export default function AccountsPage() {
         <EmptyState onCreateAccount={handleCreateAccount} />
       ) : (
         <>
-          {accounts && <KpiCards accounts={accounts} />}
+          {accounts && <KpiCards accounts={accounts} viewCurrency={viewCurrency} />}
 
           <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -327,12 +334,20 @@ export default function AccountsPage() {
                 <TabsTrigger value="liability">Liabilities</TabsTrigger>
               </TabsList>
             </Tabs>
-            <Tabs value={viewCurrency} onValueChange={(v) => setViewCurrency(v as any)}>
+            <Tabs
+              value={viewCurrency}
+              onValueChange={(v) =>
+                setViewCurrency(
+                  v as "base" | "INR" | "CAD" | "USD" | "GBP"
+                )
+              }
+            >
               <TabsList className="opacity-80">
                 <TabsTrigger value="base">Base</TabsTrigger>
                 <TabsTrigger value="INR">INR</TabsTrigger>
                 <TabsTrigger value="CAD">CAD</TabsTrigger>
                 <TabsTrigger value="USD">USD</TabsTrigger>
+                <TabsTrigger value="GBP">GBP</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>

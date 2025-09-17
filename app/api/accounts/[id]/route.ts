@@ -1,3 +1,4 @@
+import { createClient } from "@/app/utils/supabase/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -11,8 +12,13 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const token = (await cookies()).get("access_token")?.value;
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await (await supabase).auth.getSession();
+    const token = session?.access_token ?? null;
+    if (!token)
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
     const res = await fetch(`${API_BASE_URL}/account/${params.id}`, {
@@ -42,8 +48,13 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const token = (await cookies()).get("access_token")?.value;
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await (await supabase).auth.getSession();
+    const token = session?.access_token ?? null;
+    if (!token)
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const res = await fetch(`${API_BASE_URL}/account/${params.id}`, {
       method: "DELETE",
@@ -61,4 +72,3 @@ export async function DELETE(
     return NextResponse.json({ message: "Server error" }, { status: 500 });
   }
 }
-

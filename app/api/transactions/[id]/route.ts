@@ -1,3 +1,4 @@
+import { createClient } from "@/app/utils/supabase/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -11,8 +12,13 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const token = (await cookies()).get("access_token")?.value;
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await (await supabase).auth.getSession();
+    const token = session?.access_token ?? null;
+    if (!token)
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
     const res = await fetch(`${API_BASE_URL}/transaction/${params.id}`, {
@@ -26,7 +32,10 @@ export async function PATCH(
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       return NextResponse.json(
-        { message: "Failed to update transaction", detail: text?.slice(0, 500) },
+        {
+          message: "Failed to update transaction",
+          detail: text?.slice(0, 500),
+        },
         { status: res.status }
       );
     }
@@ -42,8 +51,13 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const token = (await cookies()).get("access_token")?.value;
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await (await supabase).auth.getSession();
+    const token = session?.access_token ?? null;
+    if (!token)
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const res = await fetch(`${API_BASE_URL}/transaction/${params.id}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -68,8 +82,13 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const token = (await cookies()).get("access_token")?.value;
-    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await (await supabase).auth.getSession();
+    const token = session?.access_token ?? null;
+    if (!token)
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const res = await fetch(`${API_BASE_URL}/transaction/${params.id}`, {
       method: "DELETE",
@@ -78,7 +97,10 @@ export async function DELETE(
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       return NextResponse.json(
-        { message: "Failed to delete transaction", detail: text?.slice(0, 500) },
+        {
+          message: "Failed to delete transaction",
+          detail: text?.slice(0, 500),
+        },
         { status: res.status }
       );
     }

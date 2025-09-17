@@ -7,9 +7,26 @@ import { formatMoney } from "@/lib/money";
 
 interface KpiCardsProps {
   accounts: Account[];
+  viewCurrency: "base" | Currency;
 }
 
-export function KpiCards({ accounts }: KpiCardsProps) {
+export function KpiCards({ accounts, viewCurrency }: KpiCardsProps) {
+  const SUPPORTED_CURRENCIES: Currency[] = ["INR", "USD", "CAD", "GBP"];
+  const MINOR_FACTOR: Record<Currency, number> = {
+    INR: 100,
+    USD: 100,
+    CAD: 100,
+    GBP: 100,
+  };
+
+  const [targetCurrency, setTargetCurrency] = useState<Currency | null>(null);
+  const [targetLoading, setTargetLoading] = useState(true);
+  const [targetError, setTargetError] = useState(false);
+
+  const [rates, setRates] = useState<Record<string, number> | null>(null);
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [ratesError, setRatesError] = useState(false);
+
   const assets = accounts.filter((acc) => acc.kind === "asset");
   const liabilities = accounts.filter((acc) => acc.kind === "liability");
   const investments = accounts.filter(
@@ -20,87 +37,165 @@ export function KpiCards({ accounts }: KpiCardsProps) {
         acc.type === "other investment")
   );
 
-  // Exchange rates: base INR -> quote currencies
-  const [rateUSD, setRateUSD] = useState<number>(0);
-  const [rateCAD, setRateCAD] = useState<number>(0);
-
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("https://open.er-api.com/v6/latest/INR");
-        if (!res.ok) return;
-        const data = await res.json();
-        const r = data?.rates || {};
-        if (!cancelled) {
-          setRateUSD(typeof r.USD === "number" ? r.USD : 0);
-          setRateCAD(typeof r.CAD === "number" ? r.CAD : 0);
+
+    if (viewCurrency === "base") {
+      setRates(null);
+      setRatesError(false);
+      setRatesLoading(true);
+      setTargetLoading(true);
+      setTargetError(false);
+
+      (async () => {
+        try {
+          const res = await fetch("/api/profile", { cache: "no-store" });
+          if (!res.ok) throw new Error("Failed to load profile");
+          const data = await res.json();
+          const raw =
+            typeof data?.base_currency === "string"
+              ? data.base_currency.trim().toUpperCase()
+              : "";
+          if (!SUPPORTED_CURRENCIES.includes(raw as Currency)) {
+            throw new Error("Unsupported base currency");
+          }
+          if (!cancelled) setTargetCurrency(raw as Currency);
+        } catch (e) {
+          if (!cancelled) {
+            setTargetCurrency(null);
+            setTargetError(true);
+            setRatesLoading(false);
+          }
         }
-      } catch (e) {
-        // ignore – show only INR if rates unavailable
+        if (!cancelled) setTargetLoading(false);
+      })();
+    } else {
+      setTargetLoading(false);
+      setTargetError(false);
+
+      if (targetCurrency !== viewCurrency) {
+        setRates(null);
+        setRatesError(false);
+        setRatesLoading(true);
+        setTargetCurrency(viewCurrency);
+      } else {
+        setRatesLoading(false);
       }
-    })();
+    }
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [viewCurrency]);
 
-  const toInrMinor = (amountMinor: number, currency: Currency): number => {
-    if (currency === "INR") return amountMinor;
-    if (currency === "USD" && rateUSD > 0) {
-      const usdMajor = amountMinor / 100;
-      const inrMajor = usdMajor / rateUSD; // since rateUSD = USD per 1 INR
-      return Math.round(inrMajor * 100);
+  useEffect(() => {
+    if (!targetCurrency) {
+      setRates(null);
+      setRatesLoading(false);
+      return;
     }
-    if (currency === "CAD" && rateCAD > 0) {
-      const cadMajor = amountMinor / 100;
-      const inrMajor = cadMajor / rateCAD;
-      return Math.round(inrMajor * 100);
-    }
-    // Fallback: if no rate, treat as INR to avoid NaN
-    return amountMinor;
+
+    let cancelled = false;
+    setRatesLoading(true);
+    setRatesError(false);
+    setRates(null);
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `https://open.er-api.com/v6/latest/${targetCurrency}`
+        );
+        if (!res.ok) throw new Error("Failed to load rates");
+        const data = await res.json();
+        const r = data?.rates;
+        if (!r || typeof r !== "object") {
+          throw new Error("Invalid rates response");
+        }
+        if (!cancelled) {
+          const map = { ...r };
+          map[targetCurrency] = 1;
+          setRates(map);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setRates(null);
+          setRatesError(true);
+        }
+      }
+      if (!cancelled) setRatesLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [targetCurrency]);
+
+  const convertToTargetMinor = (
+    amountMinor: number,
+    currency: Currency
+  ): number | null => {
+    if (!targetCurrency) return null;
+    if (currency === targetCurrency) return amountMinor;
+    if (!rates) return null;
+    const rate = rates[currency];
+    if (typeof rate !== "number" || rate <= 0) return null;
+    const fromFactor = MINOR_FACTOR[currency];
+    const targetFactor = MINOR_FACTOR[targetCurrency];
+    const fromMajor = amountMinor / fromFactor;
+    const targetMajor = fromMajor / rate;
+    return Math.round(targetMajor * targetFactor);
   };
 
-  const totalAssetsInrMinor = assets.reduce(
-    (sum, acc) => sum + toInrMinor(acc.balance_minor, acc.base_currency),
-    0
-  );
+  let conversionFailed = false;
 
-  const totalLiabilitiesInrMinor = liabilities.reduce(
-    (sum, acc) =>
-      sum + Math.abs(toInrMinor(acc.balance_minor, acc.base_currency)),
-    0
-  );
+  const sumConverted = (
+    list: Account[],
+    transform: (value: number) => number
+  ): number => {
+    return list.reduce((acc, account) => {
+      const converted = convertToTargetMinor(
+        account.balance_minor,
+        account.base_currency
+      );
+      if (converted === null) {
+        conversionFailed = true;
+        return acc;
+      }
+      return acc + transform(converted);
+    }, 0);
+  };
 
-  const totalInvestmentsInrMinor = investments.reduce(
-    (sum, acc) => sum + toInrMinor(acc.balance_minor, acc.base_currency),
-    0
-  );
+  const totalAssetsMinor = sumConverted(assets, (value) => value);
+  const totalLiabilitiesMinor = sumConverted(liabilities, (value) => Math.abs(value));
+  const totalInvestmentsMinor = sumConverted(investments, (value) => value);
+  const totalLiquidityMinor =
+    totalAssetsMinor - totalInvestmentsMinor - totalLiabilitiesMinor;
+  const netWorthMinor = totalAssetsMinor - totalLiabilitiesMinor;
 
-  const totalLiquidityInrMinor =
-    totalAssetsInrMinor - totalInvestmentsInrMinor - totalLiabilitiesInrMinor;
+  const shouldShowFallback =
+    targetError ||
+    !targetCurrency ||
+    ratesError ||
+    !rates ||
+    conversionFailed;
 
-  const netWorthInrMinor = totalAssetsInrMinor - totalLiabilitiesInrMinor;
+  if (targetLoading || ratesLoading) {
+    return null;
+  }
 
-  // Derive CAD/USD equivalents from INR using fetched rates
-  const assetsCadMinor = Math.round(totalAssetsInrMinor * (rateCAD || 0));
-  const assetsUsdMinor = Math.round(totalAssetsInrMinor * (rateUSD || 0));
-  const liabilitiesCadMinor = Math.round(
-    totalLiabilitiesInrMinor * (rateCAD || 0)
-  );
-  const liabilitiesUsdMinor = Math.round(
-    totalLiabilitiesInrMinor * (rateUSD || 0)
-  );
-  const netWorthCadMinor = Math.round(netWorthInrMinor * (rateCAD || 0));
-  const netWorthUsdMinor = Math.round(netWorthInrMinor * (rateUSD || 0));
-  const investmentsCadMinor = Math.round(
-    totalInvestmentsInrMinor * (rateCAD || 0)
-  );
-  const investmentsUsdMinor = Math.round(
-    totalInvestmentsInrMinor * (rateUSD || 0)
-  );
-  const liquidityCadMinor = Math.round(totalLiquidityInrMinor * (rateCAD || 0));
-  const liquidityUsdMinor = Math.round(totalLiquidityInrMinor * (rateUSD || 0));
+  if (shouldShowFallback) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-4 text-muted-foreground">
+            select base currency
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const displayCurrency = targetCurrency as Currency;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -110,11 +205,7 @@ export function KpiCards({ accounts }: KpiCardsProps) {
             Total Assets
           </div>
           <div className="text-2xl font-bold text-green-600">
-            {formatMoney(totalAssetsInrMinor, "INR")}
-          </div>
-          <div className="text-md text-muted-foreground">
-            {formatMoney(assetsCadMinor, "CAD")} •{" "}
-            {formatMoney(assetsUsdMinor, "USD")}
+            {formatMoney(totalAssetsMinor, displayCurrency)}
           </div>
         </CardContent>
       </Card>
@@ -125,11 +216,7 @@ export function KpiCards({ accounts }: KpiCardsProps) {
             Total Liabilities
           </div>
           <div className="text-2xl font-bold text-red-600">
-            {formatMoney(totalLiabilitiesInrMinor, "INR")}
-          </div>
-          <div className="text-md text-muted-foreground">
-            {formatMoney(liabilitiesCadMinor, "CAD")} •{" "}
-            {formatMoney(liabilitiesUsdMinor, "USD")}
+            {formatMoney(totalLiabilitiesMinor, displayCurrency)}
           </div>
         </CardContent>
       </Card>
@@ -141,14 +228,10 @@ export function KpiCards({ accounts }: KpiCardsProps) {
           </div>
           <div
             className={`text-2xl font-bold ${
-              netWorthInrMinor >= 0 ? "text-green-600" : "text-red-600"
+              netWorthMinor >= 0 ? "text-green-600" : "text-red-600"
             }`}
           >
-            {formatMoney(netWorthInrMinor, "INR")}
-          </div>
-          <div className="text-md text-muted-foreground">
-            {formatMoney(netWorthCadMinor, "CAD")} •{" "}
-            {formatMoney(netWorthUsdMinor, "USD")}
+            {formatMoney(netWorthMinor, displayCurrency)}
           </div>
         </CardContent>
       </Card>
@@ -159,11 +242,7 @@ export function KpiCards({ accounts }: KpiCardsProps) {
             Total Investments
           </div>
           <div className="text-2xl font-bold text-muted-foreground">
-            {formatMoney(totalInvestmentsInrMinor, "INR")}
-          </div>
-          <div className="text-md text-muted-foreground">
-            {formatMoney(investmentsCadMinor, "CAD")} •{" "}
-            {formatMoney(investmentsUsdMinor, "USD")}
+            {formatMoney(totalInvestmentsMinor, displayCurrency)}
           </div>
         </CardContent>
       </Card>
@@ -174,11 +253,7 @@ export function KpiCards({ accounts }: KpiCardsProps) {
             Total Liquidity
           </div>
           <div className="text-2xl font-bold text-muted-foreground">
-            {formatMoney(totalLiquidityInrMinor, "INR")}
-          </div>
-          <div className="text-md text-muted-foreground">
-            {formatMoney(liquidityCadMinor, "CAD")} •{" "}
-            {formatMoney(liquidityUsdMinor, "USD")}
+            {formatMoney(totalLiquidityMinor, displayCurrency)}
           </div>
         </CardContent>
       </Card>

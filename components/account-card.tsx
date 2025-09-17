@@ -14,7 +14,7 @@ interface AccountCardProps {
   onEdit: (account: Account) => void;
   onDelete: (account: Account) => void;
   overrideBalanceMinor?: number;
-  overrideCurrency?: "INR" | "USD" | "CAD";
+  overrideCurrency?: "INR" | "USD" | "CAD" | "GBP";
 }
 
 export function AccountCard({
@@ -64,6 +64,10 @@ export function AccountCard({
         return "bg-green-100 text-green-800";
       case "INR":
         return "bg-blue-100 text-blue-800";
+      case "GBP":
+        return "bg-purple-100 text-purple-800";
+      case "CAD":
+        return "bg-slate-100 text-slate-800";
       default:
         return "bg-gray-100 text-gray-800";
     }

@@ -1,4 +1,4 @@
-export type Currency = "INR" | "USD" | "CAD";
+export type Currency = "INR" | "USD" | "CAD" | "GBP";
 export type AccountKind = "asset" | "liability";
 export type AccountType =
   | "bank"
