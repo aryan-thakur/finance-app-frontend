@@ -1,3 +1,4 @@
+import { createClient } from "@/app/utils/supabase/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -11,7 +12,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const token = (await cookies()).get("access_token")?.value;
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await (await supabase).auth.getSession();
+    const token = session?.access_token ?? null;
     if (!token) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
@@ -40,7 +45,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const token = (await cookies()).get("access_token")?.value;
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await (await supabase).auth.getSession();
+    const token = session?.access_token ?? null;
     if (!token) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
@@ -53,7 +62,10 @@ export async function DELETE(
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       return NextResponse.json(
-        { message: "Failed to delete institution", detail: text?.slice(0, 300) },
+        {
+          message: "Failed to delete institution",
+          detail: text?.slice(0, 300),
+        },
         { status: res.status }
       );
     }
@@ -69,7 +81,11 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const token = (await cookies()).get("access_token")?.value;
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await (await supabase).auth.getSession();
+    const token = session?.access_token ?? null;
     if (!token) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
@@ -89,7 +105,10 @@ export async function PATCH(
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       return NextResponse.json(
-        { message: "Failed to update institution", detail: text?.slice(0, 300) },
+        {
+          message: "Failed to update institution",
+          detail: text?.slice(0, 300),
+        },
         { status: res.status }
       );
     }
