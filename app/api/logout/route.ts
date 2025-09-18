@@ -1,14 +1,9 @@
+import { createClient } from "@/app/utils/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
   const res = NextResponse.redirect(new URL("/login", request.url));
-
-  res.cookies.set("access_token", "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
+  const supabase = createClient();
+  const { error } = await (await supabase).auth.signOut();
   return res;
 }
