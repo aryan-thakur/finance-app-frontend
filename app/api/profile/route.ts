@@ -1,3 +1,4 @@
+import { createClient } from "@/app/utils/supabase/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -8,7 +9,11 @@ const API_BASE_URL =
 
 export async function GET() {
   try {
-    const token = (await cookies()).get("access_token")?.value;
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await (await supabase).auth.getSession();
+    const token = session?.access_token ?? null;
     if (!token) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
